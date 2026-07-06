@@ -4,19 +4,19 @@
 
 static constexpr float SPAWN_X = 6.5f;
 
-static constexpr float PLAYER_HALF_WIDTH = 0.42f;
+static constexpr float PLAYER_HALF_WIDTH = 0.48f; // increased for easier landings
 
-static constexpr float LANDING_SKIN = 0.20f;
+static constexpr float LANDING_SKIN = 0.35f; // more forgiving vertical tolerance
 
-static constexpr float HIT_X_RANGE = 0.28f;
+static constexpr float HIT_X_RANGE = 0.35f; // slightly increased
 
-static constexpr float HIT_FOOT_GRACE = 0.10f;
+static constexpr float HIT_FOOT_GRACE = 0.18f; // more forgiving foot grace
 
-static constexpr float MIN_SUPPORT = 0.45f;
+static constexpr float MIN_SUPPORT = 0.30f; // reduced required support to make landings easier
 
-static constexpr float SPAWN_DELAY = 0.22f;
+static constexpr float SPAWN_DELAY = 0.35f; // longer delay between platforms
 
-static constexpr float PERFECT_LANDING_X_RANGE = 0.22f;
+static constexpr float PERFECT_LANDING_X_RANGE = 0.30f;
 
 void PlatformManager::Init() {
   kayu = LoadModel("resources/wood.glb");
@@ -109,7 +109,7 @@ bool PlatformManager::CheckLanding(Vector3 previousPlayerPos,
   nextidmodel = GetRandomValue(0, 2);
   event.direction = nextSpawnSide;
   spawnDelay = SPAWN_DELAY;
-  currentPlatformSpeed += 0.2f;
+  currentPlatformSpeed += 0.12f; // slower difficulty ramp
   return true;
 }
 
