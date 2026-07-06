@@ -1,6 +1,7 @@
 #include "KinectGesture.h"
 #include "../tracking/PersonTracker.h"
 #include <cstring>
+#include <cmath>
 
 constexpr float READY_HAND_GRACE = 0.05f;
 constexpr float CROUCH_DROP = -0.060f;
@@ -20,8 +21,8 @@ constexpr float MIN_FOOT_VELOCITY = 0.025f;
 
 constexpr float RESET_RISE = 0.015f;
 
-// increase cooldown slightly to reduce repeated triggers from trampoline bounce
-constexpr int JUMP_COOLDOWN_FRAMES = 12;
+// lower cooldown to make detection more responsive while using weighted scoring
+constexpr int JUMP_COOLDOWN_FRAMES = 6;
 
 static float Delta(const RingBuffer &b, int frames) {
   if (b.count < frames)
@@ -167,31 +168,37 @@ void KinectGesture::Update(const PersonTracker &p) {
 
   bool bodyDipped = headRise < crouchDrop || hipRise < crouchDrop;
 
-  int riseScore = 0;
+  // weighted scoring to make detection responsive but robust against foot-only bounces
+  const float W_HIP_RISE = 1.2f;
+  const float W_HIP_VEL = 1.0f;
+  const float W_HEAD_RISE = 1.2f;
+  const float W_HEAD_VEL = 1.0f;
+  const float W_FOOT_RISE = 0.45f;
+  const float W_FOOT_VEL = 0.45f;
 
+  float weightedScore = 0.0f;
   if (hipRise > minHipRise)
-    riseScore++;
-
+    weightedScore += W_HIP_RISE;
   if (hipVelocity > MIN_HIP_VELOCITY)
-    riseScore++;
-
+    weightedScore += W_HIP_VEL;
   if (headRise > minHeadRise)
-    riseScore++;
-
+    weightedScore += W_HEAD_RISE;
+  if (headVelocity > MIN_HEAD_VELOCITY)
+    weightedScore += W_HEAD_VEL;
   if (feetReady && footRise > minFootRise)
-    riseScore++;
-
+    weightedScore += W_FOOT_RISE;
   if (feetReady && footVelocity > MIN_FOOT_VELOCITY)
-    riseScore++;
+    weightedScore += W_FOOT_VEL;
 
-  if (riseScore != 0)
-    latestScore = riseScore;
-  bool confirmedRise = (riseScore >= 4);
+  if (weightedScore != 0.0f)
+    latestScore = (int)roundf(weightedScore);
+  bool confirmedRise = (weightedScore >= 3.0f);
 
-  // require either a prior crouch OR strong combined head+hip movement to consider a jump
+  // require either a prior crouch OR strong combined head+hip movement OR confirmed weighted rise
   bool jumpCandidate = !ready && jumpCooldownFrames == 0 &&
                        ((jumpState == JUMP_CROUCH && (fastUpwardPush || confirmedRise)) ||
-                        (fastUpwardPush && headRise > minHeadRise && hipRise > minHipRise && feetReady));
+                        (fastUpwardPush && headRise > minHeadRise && hipRise > minHipRise && feetReady) ||
+                        (confirmedRise && feetReady));
 
   switch (jumpState) {
   case JUMP_STAND:
