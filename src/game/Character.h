@@ -83,4 +83,8 @@ private:
   float targetFacingAngle = 0.0f;
 
   float fixedX = 0.0f;
-};
+
++  // coyote time (forgive small late jumps)
++  static constexpr float COYOTE_TIME = 0.08f;
++  float coyoteTimer = 0.0f;
+ };
