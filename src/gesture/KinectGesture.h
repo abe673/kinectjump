@@ -11,6 +11,9 @@ enum GestureType {
 
 enum JumpState { JUMP_STAND, JUMP_CROUCH, JUMP_RISING };
 
+// phases for landing/takeoff detection
+enum JumpPhase { PHASE_GROUND = 0, PHASE_LANDING, PHASE_TROUGH, PHASE_TAKEOFF, PHASE_AIR };
+
 class KinectGesture {
 public:
   void Update(const PersonTracker &person);
@@ -42,4 +45,8 @@ private:
 
   float bodyHeight = 0.0f;
   int latestScore = 0;
+
+  // phase detection
+  JumpPhase phase = PHASE_GROUND;
+  int phaseDebounce = 0;
 };
