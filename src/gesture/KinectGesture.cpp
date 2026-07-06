@@ -5,6 +5,11 @@
 #include <cfloat>
 #include "raylib.h"
 
+#include <fstream> 
+#include <sstream> 
+#include <iomanip>
+constexpr bool ENABLE_TRACE_CSV = true;
+
 constexpr bool ENABLE_GESTURE_DEBUG = false; // set true to enable TraceLog outputs for tuning
 
 constexpr float READY_HAND_GRACE = 0.05f;
@@ -244,6 +249,29 @@ void KinectGesture::Update(const PersonTracker &p) {
                                   weightedScore, latestScore, headRise, hipRise, footRise, headVelocity, hipVelocity, footVelocity, stddev, likelyBounce ? 1 : 0));
   }
 
+  // CSV trace export for offline analysis
+if (ENABLE_TRACE_CSV) {
+  static std::ofstream traceFile;
+  static bool headerWritten = false;
+  if (!traceFile.is_open()) {
+    traceFile.open("gesture_trace.csv", std::ios::out | std::ios::app);
+  }
+  if (traceFile.is_open()) {
+    if (!headerWritten) {
+      // write header only once per run
+      traceFile << "time,headY,hipY,footLeftY,footRightY,bodyHeight,headRise,hipRise,footRise,headVel,hipVel,footVel,weightedScore,stddev,likelyBounce,latestScore,confirmedRise,fastUpwardPush\n";
+      headerWritten = true;
+    }
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(6) << GetTime() << ",";
+    ss << headY << "," << hipY << "," << footLeftY << "," << footRightY << "," << bodyHeight << ",";
+    ss << headRise << "," << hipRise << "," << footRise << ",";
+    ss << headVelocity << "," << hipVelocity << "," << footVelocity << ",";
+    ss << weightedScore << "," << stddev << "," << (likelyBounce ? 1 : 0) << "," << latestScore << "," << (confirmedRise ? 1 : 0) << "," << (fastUpwardPush ? 1 : 0) << "\n";
+    traceFile << ss.str();
+    traceFile.flush();
+  }
+}
   // ... rest of jump state machine uses confirmedRise, fastUpwardPush, likelyBounce, etc.
 
 }
