@@ -270,3 +270,30 @@ if (ENABLE_TRACE_CSV) {
   // ... rest of jump state machine uses confirmedRise, fastUpwardPush, likelyBounce, etc.
 
 }
+
+// Minimal implementations for header-declared methods
+
+bool KinectGesture::IsGesturePressed(GestureType g) const {
+  return current[g] && !previous[g];
+}
+
+bool KinectGesture::IsGestureReleased(GestureType g) const {
+  return !current[g] && previous[g];
+}
+
+bool KinectGesture::IsGestureDown(GestureType g) const {
+  return current[g];
+}
+
+bool KinectGesture::IsJump() const {
+  // Minimal behavior: return true when jump gesture was just pressed
+  return IsGesturePressed(GESTURE_JUMP);
+}
+
+bool KinectGesture::IsReadyPose() const {
+  return current[GESTURE_READY];
+}
+
+int KinectGesture::GetScore() const {
+  return latestScore;
+}
