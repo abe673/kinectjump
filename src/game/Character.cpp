@@ -45,7 +45,8 @@ Character::~Character() {
 }
 
 bool Character::Jump() {
-  if (state != CharacterState::Grounded)
+  // allow jump when grounded OR within coyote time window
+  if (state != CharacterState::Grounded && coyoteTimer <= 0.0f)
     return false;
 
   jumpStartY = position.y;
@@ -53,6 +54,9 @@ bool Character::Jump() {
   state = CharacterState::Airborne;
 
   velocity.y = JUMP_SPEED;
+
+  // consume coyote time
+  coyoteTimer = 0.0f;
 
   BlendTo(ANIM_JUMP);
   sfx.PlayJump();
@@ -147,14 +151,22 @@ void Character::UpdatePhysics(float dt) {
       deathSoundPlayed = true;
     }
   }
-  if (state == CharacterState::Grounded) {
-    position.y = groundY;
 
+  if (state == CharacterState::Grounded) {
+    // while grounded we reset coyote timer so player has a small grace window
+    position.y = groundY;
     velocity.y = 0.0f;
+    coyoteTimer = COYOTE_TIME;
   } else if (state == CharacterState::Won) {
     position.y = groundY;
     velocity = Vector3Zero();
   } else {
+    // airborne: decrement coyote timer
+    if (coyoteTimer > 0.0f) {
+      coyoteTimer -= dt;
+      if (coyoteTimer < 0.0f) coyoteTimer = 0.0f;
+    }
+
     ApplyGravity(dt);
 
     position.y += velocity.y * dt;
