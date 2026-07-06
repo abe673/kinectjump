@@ -20,7 +20,8 @@ constexpr float MIN_FOOT_VELOCITY = 0.025f;
 
 constexpr float RESET_RISE = 0.015f;
 
-constexpr int JUMP_COOLDOWN_FRAMES = 10;
+// increase cooldown slightly to reduce repeated triggers from trampoline bounce
+constexpr int JUMP_COOLDOWN_FRAMES = 12;
 
 static float Delta(const RingBuffer &b, int frames) {
   if (b.count < frames)
@@ -151,9 +152,9 @@ void KinectGesture::Update(const PersonTracker &p) {
   float footVelocity =
       feetReady ? (leftFootVelocity + rightFootVelocity) * 0.5f : 0.0f;
 
-  bool fastUpwardPush =
-      hipVelocity > QUICK_HIP_VELOCITY && (headVelocity > QUICK_HEAD_VELOCITY ||
-                                           footVelocity > QUICK_FOOT_VELOCITY);
+  // tighten fastUpwardPush to rely on head+hip velocity to avoid foot-only bounces
+  bool fastUpwardPush = hipVelocity > QUICK_HIP_VELOCITY &&
+                        headVelocity > QUICK_HEAD_VELOCITY;
 
   float scale = ClampFloat(bodyHeight / 1.70f, 0.75f, 1.25f);
 
@@ -187,8 +188,10 @@ void KinectGesture::Update(const PersonTracker &p) {
     latestScore = riseScore;
   bool confirmedRise = (riseScore >= 4);
 
-  bool jumpCandidate =
-      !ready && jumpCooldownFrames == 0 && (fastUpwardPush || confirmedRise);
+  // require either a prior crouch OR strong combined head+hip movement to consider a jump
+  bool jumpCandidate = !ready && jumpCooldownFrames == 0 &&
+                       ((jumpState == JUMP_CROUCH && (fastUpwardPush || confirmedRise)) ||
+                        (fastUpwardPush && headRise > minHeadRise && hipRise > minHipRise && feetReady));
 
   switch (jumpState) {
   case JUMP_STAND:
