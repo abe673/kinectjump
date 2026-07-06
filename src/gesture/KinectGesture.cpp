@@ -267,7 +267,51 @@ if (ENABLE_TRACE_CSV) {
     traceFile.flush();
   }
 }
-  // ... rest of jump state machine uses confirmedRise, fastUpwardPush, likelyBounce, etc.
+
+  // Simple jump state machine and gesture emission
+  // Criteria to fire a jump: a confirmed rise (weightedScore high enough),
+  // not likely bounce, and either a prior crouch or a fast upward push.
+  bool jumpDetected = false;
+  if (jumpCooldownFrames == 0 && confirmedRise && !likelyBounce) {
+    if (fastUpwardPush || bodyDipped) {
+      jumpDetected = true;
+    }
+  }
+
+  // Emit a single-frame pressed event for the jump gesture and engage cooldown.
+  if (jumpDetected) {
+    current[GESTURE_JUMP] = true;
+    jumpState = JUMP_RISING;
+    phase = PHASE_TAKEOFF;
+    phaseDebounce = 4; // small debounce for phase transitions
+    jumpCooldownFrames = JUMP_COOLDOWN_FRAMES;
+  }
+
+  // Basic state transitions to return to standing state
+  if (jumpState == JUMP_STAND) {
+    if (bodyDipped)
+      jumpState = JUMP_CROUCH;
+  } else if (jumpState == JUMP_CROUCH) {
+    // if user aborted crouch without rising enough, return to stand
+    if (!bodyDipped && headRise > resetRise && hipRise > resetRise) {
+      // recovered without jump
+      jumpState = JUMP_STAND;
+    }
+  } else if (jumpState == JUMP_RISING) {
+    // when body is back near standing position, consider landed
+    if (headRise < resetRise && hipRise < resetRise) {
+      jumpState = JUMP_STAND;
+      phase = PHASE_GROUND;
+    }
+  }
+
+  // phase debounce handling (simple)
+  if (phaseDebounce > 0) {
+    phaseDebounce--;
+    if (phaseDebounce == 0 && phase == PHASE_TAKEOFF) {
+      phase = PHASE_AIR;
+    }
+  }
 
 }
 
