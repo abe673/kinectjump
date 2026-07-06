@@ -24,6 +24,10 @@ constexpr float RESET_RISE = 0.015f;
 // lower cooldown to make detection more responsive while using weighted scoring
 constexpr int JUMP_COOLDOWN_FRAMES = 6;
 
+// anti-bounce thresholds
+constexpr float BOUNCE_STDDEV_THRESHOLD = 0.03f; // tuneable
+constexpr float BOUNCE_FOOT_RISE_MULT = 1.0f;    // foot rise compared to minFootRise
+
 static float Delta(const RingBuffer &b, int frames) {
   if (b.count < frames)
     return 0.0f;
@@ -194,11 +198,29 @@ void KinectGesture::Update(const PersonTracker &p) {
     latestScore = (int)roundf(weightedScore);
   bool confirmedRise = (weightedScore >= 3.0f);
 
+  // ANTI-BOUNCE: detect cases where head/hip/feet rise uniformly (likely trampoline bounce)
+  float nHead = headRise / (bodyHeight + 1e-6f);
+  float nHip = hipRise / (bodyHeight + 1e-6f);
+  float nFoot = footRise / (bodyHeight + 1e-6f);
+  float mean = (nHead + nHip + nFoot) / 3.0f;
+  float v1 = (nHead - mean) * (nHead - mean);
+  float v2 = (nHip - mean) * (nHip - mean);
+  float v3 = (nFoot - mean) * (nFoot - mean);
+  float stddev = sqrtf((v1 + v2 + v3) / 3.0f);
+
+  bool likelyBounce = (stddev <= BOUNCE_STDDEV_THRESHOLD) &&
+                      (feetReady && footRise >= minFootRise * BOUNCE_FOOT_RISE_MULT) &&
+                      (headVelocity < MIN_HEAD_VELOCITY || hipVelocity < MIN_HIP_VELOCITY) &&
+                      (jumpState != JUMP_CROUCH);
+
   // require either a prior crouch OR strong combined head+hip movement OR confirmed weighted rise
-  bool jumpCandidate = !ready && jumpCooldownFrames == 0 &&
+  bool baseCandidate = !ready && jumpCooldownFrames == 0 &&
                        ((jumpState == JUMP_CROUCH && (fastUpwardPush || confirmedRise)) ||
                         (fastUpwardPush && headRise > minHeadRise && hipRise > minHipRise && feetReady) ||
                         (confirmedRise && feetReady));
+
+  // if likely bounce and player didn't crouch, ignore candidate
+  bool jumpCandidate = baseCandidate && !likelyBounce;
 
   switch (jumpState) {
   case JUMP_STAND:
