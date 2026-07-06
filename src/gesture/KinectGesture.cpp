@@ -10,7 +10,6 @@
 #include <iomanip>
 constexpr bool ENABLE_TRACE_CSV = true;
 
-constexpr bool ENABLE_GESTURE_DEBUG = false; // set true to enable TraceLog outputs for tuning
 
 constexpr float READY_HAND_GRACE = 0.05f;
 constexpr float CROUCH_DROP = -0.060f;
@@ -243,11 +242,7 @@ void KinectGesture::Update(const PersonTracker &p) {
   bool likelyBounce = (stddev < BOUNCE_STDDEV_THRESHOLD) &&
                       (feetReady ? (footRise > minFootRise * BOUNCE_FOOT_RISE_MULT) : false);
 
-  // debug logging to help tuning
-  if (ENABLE_GESTURE_DEBUG) {
-    TraceLog(LOG_INFO, TextFormat("KinectGesture: score=%.2f latest=%d headR=%.3f hipR=%.3f footR=%.3f hVel=%.3f hipVel=%.3f footVel=%.3f std=%.4f bounce=%d",
-                                  weightedScore, latestScore, headRise, hipRise, footRise, headVelocity, hipVelocity, footVelocity, stddev, likelyBounce ? 1 : 0));
-  }
+
 
   // CSV trace export for offline analysis
 if (ENABLE_TRACE_CSV) {
